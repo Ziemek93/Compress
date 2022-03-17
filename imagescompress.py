@@ -6,6 +6,9 @@ import sys
 
 class ImagesCompress:
     FOLDER = 'Compressed'
+    files_before_comp = 0.0
+    files_after_comp = 0.0
+    percent_diff : int
     files_extensions = re.compile('(.*jpg$)|(.*jpeg$)|(.*gif$)|(.*png$)|(.*webp$)', re.IGNORECASE)
     error_string = ''
     counter = 0
@@ -42,6 +45,11 @@ class ImagesCompress:
             print("Dir exist")
         else:
             self.make_them_light()
+
+            if(self.files_before_comp > 0 and self.files_before_comp > 0):
+                self.percent_diff = int((self.files_after_comp / self.files_before_comp) * 100)
+                print(f'Saved: {self.files_before_comp} -> {self.files_after_comp} : {self.files_before_comp - self.files_after_comp} ({100 - self.percent_diff})%')
+
             print('\nFiles compressed: ' + str(self.counter))
             if(self.error_string):
                 print('\nErrors: \n' + self.error_string)
@@ -58,6 +66,7 @@ class ImagesCompress:
             self.error_string += f'PNG convert error: ({picture.format}) {f_name} - {type(exc)} - {exc}\n'
             
     def make_them_light(self):
+        Image.MAX_IMAGE_PIXELS = None
 
         final_format : str
         #format = 0
@@ -82,17 +91,16 @@ class ImagesCompress:
                 if frst_regex_res:
                     file_size = round(os.stat(paths['current'] + "/" + file).st_size / 1024, 3)
                     #print(file_size)
-                    #print(file)
+                    print(file)
                     new_file_name : str
                     image_format : str
-
+ 
                     if file_size <= self.maxSize and file_size >= self.minSize:
                         try:
                             picture = Image.open('{}/{}'.format(root, file))
                             
                             images_format_reg = re.compile('(jpg$)|(jpeg$)|(gif$)|(webp$)|(png$)|((.*)$)', re.IGNORECASE)
                             sec_regex_res = re.match(images_format_reg, picture.format)
-
 
                             if(convert == True): 
                                 image_format = final_format
@@ -110,9 +118,9 @@ class ImagesCompress:
                         except Exception as exc:
                         #print("%s -  %s: %s" %(picture.format,file,exc)) 
                              
-
+                            print('blabla' + exc)
                             self.error_string += f'Image open: {file} (Line {sys.exc_info()[-1].tb_lineno}) - {exc}\n'
-
+ 
                                 
                         
                             #finally:
@@ -130,10 +138,12 @@ class ImagesCompress:
                             picture.save(new_file_name, optimize=True, quality=self.image_quality)
     
                             new_file_size = round(os.stat(new_file_name).st_size / 1024, 3)
-                            is_bigger_now = bool(file_size < new_file_size) 
+                            is_bigger_now = bool(int(file_size) < int(new_file_size)) 
                             print("%s (%s):   %f -> %f " %(file,image_format,file_size,new_file_size))
 
                             self.counter += 1
+                            self.files_before_comp += int(file_size)
+                            self.files_after_comp +=  int(new_file_size)
                             if(is_bigger_now == True):
                                 os.remove(new_file_name)
                                 print("File is bigger now - aborted")
