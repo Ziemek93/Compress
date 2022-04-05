@@ -29,7 +29,7 @@ else:
 
 if(quality >= 0 and quality <= 100 and imageMinSize < imageMaxSize and imageMinSize >= 0):
     komp = ImagesCompress(imageMinSize, imageMaxSize, quality, change_format)
-    komp.ini_compress()
+    komp.compress_files()
     #compress(quality, imageMinSize, imageMaxSize)
 else:
     print('fuk')

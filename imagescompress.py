@@ -1,8 +1,8 @@
-from xmlrpc.client import boolean
 from PIL import Image
 import os
 import re
 import sys
+import codecs
 
 class ImagesCompress:
     FOLDER = 'Compressed'
@@ -10,8 +10,10 @@ class ImagesCompress:
     files_after_comp = 0.0
     percent_diff : int
     files_extensions = re.compile('(.*jpg$)|(.*jpeg$)|(.*gif$)|(.*png$)|(.*webp$)', re.IGNORECASE)
+    log_file = ''
     error_string = ''
     counter = 0
+    files_skipped = 0
 
     def __init__(self, minSize : int, maxSize : int, image_quality : int, change_format = 0):
         self.minSize = minSize
@@ -25,22 +27,23 @@ class ImagesCompress:
         new_root_list.insert(1,self.FOLDER)
         new_root = '/'.join(new_root_list)
         if os.path.exists(new_root) != True:
-             os.makedirs(new_root)
+            os.makedirs(new_root)
 
         return {'current': current_root, 'new': new_root}
 
-    def get_file_format(self, file):
-        fileNameArr = file.split('.')
-        return fileNameArr[- 1]
-    def get_file_name(self, file):
-        fileNameArr = file.split('.')
-        return fileNameArr[:- 1]
-        
+    # def get_file_format(self, file):
+    #     fileNameArr = file.split('.')
+    #     return fileNameArr[- 1]
+    # def get_file_name(self, file):
+    #     fileNameArr = file.split('.')
+    #     return fileNameArr[:- 1]
+
+    #Fix file format extension
     def format_fix(self, name_format, file_format, path, new_name, file_name):
         if(name_format != file_format):                        
             os.rename(new_name, path + "/" + file_name)
             
-    def ini_compress(self):
+    def compress_files(self):
         if os.path.exists(self.FOLDER):
             print("Dir exist")
         else:
@@ -48,13 +51,21 @@ class ImagesCompress:
 
             if(self.files_before_comp > 0 and self.files_before_comp > 0):
                 self.percent_diff = int((self.files_after_comp / self.files_before_comp) * 100)
-                print(f'Saved: {self.files_before_comp} -> {self.files_after_comp} : {self.files_before_comp - self.files_after_comp} ({100 - self.percent_diff})%')
+                compress_info = f'Saved: {self.files_before_comp} -> {self.files_after_comp} : {self.files_before_comp - self.files_after_comp} ({100 - self.percent_diff})%'
+                self.save_log(compress_info)
+                print(compress_info)
+                files_compressed = '\nFiles compressed: ' + str(self.counter)
+                self.save_log(files_compressed)
+                print(files_compressed)
+            
+            print('\nFiles not compressed: ' + str(self.files_skipped - self.counter))
 
-            print('\nFiles compressed: ' + str(self.counter))
             if(self.error_string):
+                self.save_log('\nErrors: \n' + self.error_string)
                 print('\nErrors: \n' + self.error_string)
+            self.close_log_file()
 
-    def compress_png(self, f_name, picture : Image):
+    def format_png(self, f_name, picture : Image):
         try:
             picture = picture.convert(
             mode='P', # use mode='PA' for transparency
@@ -64,8 +75,21 @@ class ImagesCompress:
         except Exception as exc:
             #print("%s -  %s: %s" %(picture.format,file,exc)) 
             self.error_string += f'PNG convert error: ({picture.format}) {f_name} - {type(exc)} - {exc}\n'
-            
+
+
+    def close_log_file(self):
+        if(self.log_file != ''):
+            self.log_file.close()
+    def save_log(self, text : str):
+        if(self.log_file == ''):
+            self.log_file = codecs.open('compress_log.txt', 'w+', 'utf-8')
+        self.log_file.write(text + "\n")
+
+
     def make_them_light(self):
+        clearConsole = lambda: os.system('cls' if os.name in ('nt', 'dos') else 'clear')
+
+
         Image.MAX_IMAGE_PIXELS = None
 
         final_format : str
@@ -83,6 +107,7 @@ class ImagesCompress:
         print(self.change_format)
         for root, dirs, files in os.walk("./"): 
             for file in files:
+                clearConsole()
                 frst_regex_res = re.match(self.files_extensions, file)
     
                 paths = self.get_path(root)
@@ -91,7 +116,7 @@ class ImagesCompress:
                 if frst_regex_res:
                     file_size = round(os.stat(paths['current'] + "/" + file).st_size / 1024, 3)
                     #print(file_size)
-                    print(file)
+                    #print(file)
                     new_file_name : str
                     image_format : str
  
@@ -104,34 +129,32 @@ class ImagesCompress:
 
                             if(convert == True): 
                                 image_format = final_format
-                                picture = picture.convert('RGB')
+                                if(final_format == 'webp'):
+                                    picture = picture.convert('RGBA')
+                                else:
+                                    picture = picture.convert('RGB')
+
                             else:
-                                file_format = self.get_file_format(file)
+                                arr = file.split('.')
+                                file_format = arr[- 1]
                                 if sec_regex_res.group(5):
                                     #print("png",file)
 
                                     #Fix when image has the wrong format in the name
                                     image_format = picture.format
-                                    picture = self.compress_png(file, picture)
+                                    picture = self.format_png(file, picture)
                                 elif(sec_regex_res):
                                     image_format = file_format
                         except Exception as exc:
-                        #print("%s -  %s: %s" %(picture.format,file,exc)) 
                              
-                            print('blabla' + exc)
                             self.error_string += f'Image open: {file} (Line {sys.exc_info()[-1].tb_lineno}) - {exc}\n'
  
                                 
-                        
-                            #finally:
-                            #    print('blabla') 
-                        #else:
                             
                         is_bigger_now = True
-                        #print('nazwa ' + str(fileNameArr[:-1]))
                         try:
-                        
-                            new_file_name = '{}/{}.{}'.format(paths['new'],'.'.join(self.get_file_name(file)), image_format )
+                            arr = file.split('.')
+                            new_file_name = '{}/{}.{}'.format(paths['new'],'.'.join(arr[:- 1]), image_format )
                             
                             
                             
@@ -139,28 +162,30 @@ class ImagesCompress:
     
                             new_file_size = round(os.stat(new_file_name).st_size / 1024, 3)
                             is_bigger_now = bool(int(file_size) < int(new_file_size)) 
-                            print("%s (%s):   %f -> %f " %(file,image_format,file_size,new_file_size))
+                            info = "%s (%s):   %f -> %f " %(file,image_format,file_size,new_file_size)
+                            print(info)
+
+                            self.save_log(info)
+                            self.files_skipped += 1
+
+                            if(is_bigger_now == True):
+                                os.remove(new_file_name)
+                                self.save_log("File is bigger now - aborted")
+                                print("File is bigger now - aborted")
+
+                                continue
+                            elif(convert == False):
+                                self.format_fix(file_format, picture.format, paths['new'], new_file_name,  str(file))
 
                             self.counter += 1
                             self.files_before_comp += int(file_size)
                             self.files_after_comp +=  int(new_file_size)
-                            if(is_bigger_now == True):
-                                os.remove(new_file_name)
-                                print("File is bigger now - aborted")
-                                self.counter -= 1
-                            elif(convert == False):
-                            #print(f'{file}:     {fileSize} -> {new_file_size}')
-                            #picture.save("Compressed_"+file,optimize=True,quality=75) 
-                                self.format_fix(file_format, picture.format, paths['new'], new_file_name,  str(file))
-                                
                             
 
                         except Exception as exc:
                             self.error_string += f'Save error: ({picture.format}) {file}({image_format}) (Line {sys.exc_info()[-1].tb_lineno}) - {exc}\n'
-                        #finally:
-                            #print('blabla')                              
-    
-                        #dim = picture.size
+                                   
+        self.save_log(self.error_string)
     
                         
     
