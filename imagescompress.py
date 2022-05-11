@@ -9,7 +9,7 @@ class ImagesCompress:
     files_before_comp = 0.0
     files_after_comp = 0.0
     percent_diff : int
-    files_extensions = re.compile('(.*jpg$)|(.*jpeg$)|(.*gif$)|(.*png$)|(.*webp$)', re.IGNORECASE)
+    files_extensions = re.compile('(.*jpg$)|(.*jpeg$)|(.*gif$)|(.*png$)|(.*webp$)|(.*tiff)', re.IGNORECASE)
     log_file = ''
     error_string = ''
     counter = 0
@@ -68,9 +68,17 @@ class ImagesCompress:
     def format_png(self, f_name, picture : Image):
         try:
             picture = picture.convert(
-            mode='P', # use mode='PA' for transparency
-            palette=Image.ADAPTIVE
+            mode= 'P', # use mode='PA' for transparency
+            palette=Image.ADAPTIVE, colors=256
             )
+
+
+            #picture = picture.convert(
+            #mode= 'RGBA', # use mode='PA' for transparency
+            #palette=Image.ADAPTIVE, colors=256
+            #)
+            ##picture_rgb = picture.convert(mode='RGBA') # convert RGBA to RGB
+            ##picture = picture.quantize(colors=256, method=Image.MAXCOVERAGE)
             return picture
         except Exception as exc:
             #print("%s -  %s: %s" %(picture.format,file,exc)) 
@@ -84,12 +92,16 @@ class ImagesCompress:
         if(self.log_file == ''):
             self.log_file = codecs.open('compress_log.txt', 'w+', 'utf-8')
         self.log_file.write(text + "\n")
-
+    def metadada(img :Image):
+        data = list(img.getdata())
+        image_without_exif = Image.new(img.mode, img.size)
+        image_without_exif.putdata(data)
+        return image_without_exif
 
     def make_them_light(self):
         clearConsole = lambda: os.system('cls' if os.name in ('nt', 'dos') else 'clear')
 
-
+    
         Image.MAX_IMAGE_PIXELS = None
 
         final_format : str
@@ -124,7 +136,7 @@ class ImagesCompress:
                         try:
                             picture = Image.open('{}/{}'.format(root, file))
                             
-                            images_format_reg = re.compile('(jpg$)|(jpeg$)|(gif$)|(webp$)|(png$)|((.*)$)', re.IGNORECASE)
+                            images_format_reg = re.compile('(jpg$)|(jpeg$)|(gif$)|(webp$)|(png$)|(tiff$)|((.*)$)', re.IGNORECASE)
                             sec_regex_res = re.match(images_format_reg, picture.format)
 
                             if(convert == True): 
@@ -148,7 +160,7 @@ class ImagesCompress:
                         except Exception as exc:
                              
                             self.error_string += f'Image open: {file} (Line {sys.exc_info()[-1].tb_lineno}) - {exc}\n'
- 
+                            picture = self.metadada(picture)
                                 
                             
                         is_bigger_now = True
