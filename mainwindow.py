@@ -77,7 +77,7 @@ class GUI:
                 [sg.Text('Images skipped'), sg.Text('0', background_color='#28a745', key='-IMAGESSKIPPED-')],
                 [sg.Text('Files compressed:'), sg.Text('0', background_color='#28a745', key='-FILESCOMPRESSED-')],
                 [sg.Text('Saved:'), sg.Text('   ', background_color='#28a745', key='-MEMORYSAVED-')]]
-        tab2 = [[sg.Output(size=(100,20))]]  # [sg.Output(size=(100,20))]
+        tab2 = [[sg.Output(size=(80,20))]]  # [sg.Output(size=(100,20))]
 
         right_col = [
             [sg.TabGroup([[sg.Tab('INFO', tab1, tooltip='tip'), sg.Tab('OUTPUT', tab2)]], tooltip='TIP2')]
